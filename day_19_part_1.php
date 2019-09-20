@@ -1,4 +1,11 @@
 <?php
+/**
+ * @file
+ * Created by PhpStorm.
+ * User: andralex
+ * Date: 8/9/17
+ * Time: 9:07 AM.
+ */
 
 $input = <<<'INPUT'
 Al => ThF
@@ -56,15 +63,19 @@ foreach ($replacements as $key => $replacement) {
 }
 
 /**
- * @param string $input
+ * Get possible distinct molecules after one replacement.
+ *
+ * @param string $molecule
+ *   String containing molecule to replace.
  *
  * @return array
+ *   Associative array of possible replacements where
  */
-function generate_new_level($input = 'e', $level = 0) {
+function generate_new_level($molecule = 'e', $level = 0) {
   global $replacements;
   $new_level = $level + 1;
 
-  $pieces = preg_split('/([e]|[A-Z][a-df-z]?)/', $input, -1, PREG_SPLIT_NO_EMPTY | PREG_SPLIT_DELIM_CAPTURE);
+  $pieces = preg_split('/([e]|[A-Z][a-df-z]?)/', $molecule, -1, PREG_SPLIT_NO_EMPTY | PREG_SPLIT_DELIM_CAPTURE);
 
   $result = [];
   foreach ($pieces as $key => $piece) {
