@@ -1,11 +1,14 @@
 <?php
 /**
+ * @file
  * Created by PhpStorm.
  * User: andralex
  * Date: 8/9/17
- * Time: 9:07 AM
+ * Time: 9:07 AM.
  */
-$in = 'Al => ThF
+
+$input = <<<'INPUT'
+Al => ThF
 Al => ThRnFAr
 B => BCa
 B => TiB
@@ -47,99 +50,95 @@ Ti => BP
 Ti => TiTi
 e => HF
 e => NAl
-e => OMg';
-$result_molecule = 'CRnCaCaCaSiRnBPTiMgArSiRnSiRnMgArSiRnCaFArTiTiBSiThFYCaFArCaCaSiThCaPBSiThSiThCaCaPTiRnPBSiThRnFArArCaCaSiThCaSiThSiRnMgArCaPTiBPRnFArSiThCaSiRnFArBCaSiRnCaPRnFArPMgYCaFArCaPTiTiTiBPBSiThCaPTiBPBSiRnFArBPBSiRnCaFArBPRnSiRnFArRnSiRnBFArCaFArCaCaCaSiThSiThCaCaPBPTiTiRnFArCaPTiBSiAlArPBCaCaCaCaCaSiRnMgArCaSiThFArThCaSiThCaSiRnCaFYCaSiRnFYFArFArCaSiRnFYFArCaSiRnBPMgArSiThPRnFArCaSiRnFArTiRnSiRnFYFArCaSiRnBFArCaSiRnTiMgArSiThCaSiThCaFArPRnFArSiRnFArTiTiTiTiBCaCaSiRnCaCaFYFArSiThCaPTiBPTiBCaSiThSiRnMgArCaF';
+e => OMg
+INPUT;
+$target = 'CRnCaCaCaSiRnBPTiMgArSiRnSiRnMgArSiRnCaFArTiTiBSiThFYCaFArCaCaSiThCaPBSiThSiThCaCaPTiRnPBSiThRnFArArCaCaSiThCaSiThSiRnMgArCaPTiBPRnFArSiThCaSiRnFArBCaSiRnCaPRnFArPMgYCaFArCaPTiTiTiBPBSiThCaPTiBPBSiRnFArBPBSiRnCaFArBPRnSiRnFArRnSiRnBFArCaFArCaCaCaSiThSiThCaCaPBPTiTiRnFArCaPTiBSiAlArPBCaCaCaCaCaSiRnMgArCaSiThFArThCaSiThCaSiRnCaFYCaSiRnFYFArFArCaSiRnFYFArCaSiRnBPMgArSiThPRnFArCaSiRnFArTiRnSiRnFYFArCaSiRnBFArCaSiRnTiMgArSiThCaSiThCaFArPRnFArSiRnFArTiTiTiTiBCaCaSiRnCaCaFYFArSiThCaPTiBPTiBCaSiThSiRnMgArCaF';
 
 //// Test input.
-//$in = 'e => H
+//$input = <<<'INPUT'
+//e => H
 //e => O
 //H => HO
 //H => OH
-//O => HH';
-//$result_molecule = 'HOHOHO';
+//O => HH
+//INPUT;
+//
+//$target = 'HOHOHO';
 
 // Convert input data strings into usable data structure.
-$in = explode("\n", $in);
-$generates = $reduces = [];
-foreach ($in as $row) {
-  list($a, $b) = explode(' => ', $row);
-  $generates[$a][] = $b;
-  $reduces[$b] = $a;
+$replacements = explode(PHP_EOL, $input);
+foreach ($replacements as $key => $replacement) {
+  list($from, $to) = explode(' => ', $replacement);
+  $replacements[$from][] = $to;
+  unset($replacements[$key]);
 }
 
-//ksort($reduces);
-uksort($reduces, function ($a, $b) {
-  $a = strlen($a);
-  $b = strlen($b);
-  if ($a == $b) return 0;
-  return ($a < $b) ? 1: -1;
-});
-print_r($reduces);
-
 /**
- * @param $replacements
- * @param $subject
+ * Get possible distinct molecules after one replacement.
+ *
+ * @param string $molecule
+ *   String containing molecule to replace.
+ *
+ * @return array
+ *   Associative array of possible replacements where
  */
-function generate_new_molecules($replacements, $subject) {
-  $pattern = '/(';
-  $pattern .= implode(')|(', array_keys($replacements));
-  $pattern .= ')/';
+function generate_new_level($molecule = 'e', $level = 0) {
+  global $replacements;
+  $new_level = $level + 1;
 
-  $pieces = preg_split($pattern, $subject, -1, PREG_SPLIT_DELIM_CAPTURE);
-  $pieces = array_filter($pieces);
+  $pieces = preg_split('/([e]|[A-Z][a-df-z]?)/', $molecule, -1, PREG_SPLIT_NO_EMPTY | PREG_SPLIT_DELIM_CAPTURE);
 
-  // Count for replacements.
-  $out = [];
+  $result = [];
   foreach ($pieces as $key => $piece) {
     if (array_key_exists($piece, $replacements)) {
       foreach ($replacements[$piece] as $replacement) {
         $new_molecule = $pieces;
         $new_molecule[$key] = $replacement;
-        $out[] = implode('', $new_molecule);
+        $new_molecule = implode('', $new_molecule);
+        $result[$new_molecule] = $new_level;
       }
     }
   }
-  return $out;
+
+  return $result;
 }
 
 /**
- * @param $replacements
- * @param $subject
+ * Recursive search for target.
+ *
+ * @param array $molecules
+ *   Molecules to compare with target.
+ * @param bool $found_at
+ *   Previosly found position.
+ *
+ * @return bool|mixed
  */
-function reduce_molecule($replacements, $subject) {
-  $pattern = '/(';
-  $pattern .= implode(')|(', array_keys($replacements));
-  $pattern .= ')/';
+function search_molecule($molecules = ['e' => 0], $found_at = FALSE) {
+  global $target;
 
-  $subject = preg_split($pattern, $subject, -1, PREG_SPLIT_DELIM_CAPTURE);
-  $subject = array_filter($subject);
+  foreach ($molecules as $molecule => $level) {
+//    printf('Checked molecule %s at level: #%d' . PHP_EOL, $molecule, $level);
+    if (strlen($molecule) > strlen($target)) {
+      return FALSE;
+    }
+    if ($molecule === $target) {
+      printf('found molecule at: %d' . PHP_EOL, $level);
+      return $level;
+    }
 
-  // Count for replacements.
-  foreach ($replacements as $from => $to) {
-    foreach ($subject as $key => $piece) {
-      if ($piece == $from) {
-        $subject[$key] = $to;
-        return implode($subject);
-      }
+    $next_level = generate_new_level($molecule, $level);
+    $search_molecule = search_molecule($next_level);
+
+    if (!is_numeric($found_at) && is_numeric($search_molecule)) {
+      $found_at = $search_molecule;
+    }
+    if (is_numeric($found_at) && is_numeric($search_molecule)) {
+      $found_at = min($search_molecule, $found_at);
     }
   }
-  return implode($subject);
+
+  return $found_at;
 }
 
-$steps = 0;
-do {
-  $found = FALSE;
-  printf("molecule: %s\n", $result_molecule);
-  $new_molecule = reduce_molecule($reduces, $result_molecule);
-  if ($new_molecule != $result_molecule) {
-    $found = TRUE;
-    $steps++;
-  }
-  $result_molecule = $new_molecule;
-  printf("step: %d\n", $steps);
-} while ($found);
-
-//printf("molecule: %s\n", $result_molecule);
-//printf("steps: %d\n", $steps);
-
-
+$result = search_molecule();
+printf('Found at level: #%d' . PHP_EOL, $result);
